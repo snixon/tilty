@@ -6,4 +6,6 @@ def test_parse_packet():
     assert blescan.parse_packet(pkt) == {
         'mac': '09:77:01:03:01:02',
         'uuid': 'a495bb30c5b14b44b5121370f02d74de',
+        'major': 66,
+        'minor': 1015
     }

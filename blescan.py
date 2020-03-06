@@ -54,6 +54,18 @@ def string_packet(pkt):
         _str += "%02x" % struct.unpack("B", pkt[i:i+1])[0]
     return _str
 
+def number_packet(pkt):
+    # for(each byte) -> (start at 256 offset) -> byte as int * index -> add up
+    # b'\x89=' -> loop -> 137*256 -> + -> 61 -> 35133
+    _int = 0
+    multiple = 256
+    for i in range(len(pkt)):
+        # 35072
+        # 61
+        _int += struct.unpack("B", pkt[i:i+1])[0] * multiple
+        multiple = 1
+    return _int  # 35133
+
 # https://github.com/atlefren/pytilt/blob/master/pytilt.py
 TILT_DEVICES = {
     'a495bb30c5b14b44b5121370f02d74de': 'Black',
@@ -80,8 +92,12 @@ def parse_packet(pkt):
     if event == 0x3e:  # 62 -> 0x3e -> HCI Event: LE Meta Event (0x3e) plen 44
         subevent, = struct.unpack("B", pkt[3:4])  # b'\x02' -> (2,)
         if subevent == 0x02:  # if 0x02 (2) -> all iBeacons use this
-            return {
-                'mac': packed_bdaddr_to_string(pkt[3:9]),  # mac   -> 6 bytes -> b'\x02\x01\x03\x01w\t'  # noqa
-                'uuid': string_packet(pkt[-22:-6]),        # uuid  -> 16bytes -> b'\xa4\x95\xbb0\xc5\xb1KD\xb5\x12\x13p\xf0-t\xde'  # noqa
-            }
+            uuid = string_packet(pkt[-22:-6])        # uuid  -> 16bytes -> b'\xa4\x95\xbb0\xc5\xb1KD\xb5\x12\x13p\xf0-t\xde'  # noqa
+            if uuid in TILT_DEVICES:
+                return {
+                    'mac': packed_bdaddr_to_string(pkt[3:9]),  # mac   -> 6 bytes -> b'\x02\x01\x03\x01w\t'  # noqa
+                    'uuid': uuid,
+                    'major': number_packet(pkt[-6:-4]),        # major -> 2 bytes -> b'\x00B'  # noqa
+                    'minor': number_packet(pkt[-4:-2]),        # minor -> 2 bytes -> b'\x03\xf7'  # noqa
+                }
     return {}
